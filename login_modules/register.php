@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>Create Account - MySocial</title>
-    <script src="../jquery.min.js"></script>
+    <script src="../jquery-3.7.1.js"></script>
+
     <style>
         * { box-sizing:border-box; margin:0; padding:0; font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-
         body { display:flex; justify-content:center; align-items:center; min-height:100vh; background:#e0f2f1; }
 
         .register-card {
@@ -24,10 +24,7 @@
             margin-bottom:25px;
         }
 
-        .register-card input[type="text"],
-        .register-card input[type="email"],
-        .register-card input[type="password"],
-        .register-card input[type="file"] {
+        .register-card input {
             width:100%;
             padding:12px 15px;
             margin-bottom:15px;
@@ -38,39 +35,18 @@
 
         .register-card button {
             width:100%;
-            padding:12px 15px;
+            padding:12px;
             background:#009688;
             border:none;
             border-radius:6px;
             color:#fff;
             font-size:16px;
             cursor:pointer;
-            transition:0.2s;
         }
 
-        .register-card button:hover {
-            background:#00796b;
-        }
-
-        .register-card p {
-            margin-top:15px;
-            font-size:14px;
-        }
-
-        .register-card a {
-            color:#00796b;
-            text-decoration:none;
-        }
-
-        .register-card a:hover {
-            text-decoration:underline;
-        }
+        .register-card button:hover { background:#00796b; }
 
         #msg { margin-bottom:15px; font-size:14px; }
-
-        @media(max-width:500px){
-            .register-card { padding:30px 20px; }
-        }
     </style>
 </head>
 <body>
@@ -104,12 +80,12 @@ $("#registerForm").on("submit", function(e){
         data: new FormData(this),
         contentType: false,
         processData: false,
-        success: function(response){
-            if (response.trim() === "success") {
+        success: function(res){
+            if (res.trim() === "success") {
                 alert("Registration successful!");
                 window.location.href = "login.php";
             } else {
-                $("#msg").html("<span style='color:red'>" + response + "</span>");
+                $("#msg").html("<span style='color:red'>" + res + "</span>");
             }
         }
     });

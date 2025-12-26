@@ -1,67 +1,82 @@
 <?php
-include '../config.php';
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-function emailExists($conn, $email) {
-    $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    return $result->num_rows > 0;
+/* CONFIG */
+require_once __DIR__ . '/../config.php';
+
+/* REQUEST CHECK */
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    exit('Invalid request');
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+/* INPUT */
+$username = trim($_POST['username'] ?? '');
+$email    = trim($_POST['email'] ?? '');
+$password = $_POST['password'] ?? '';
+$confirm  = $_POST['confirm_password'] ?? '';
+$type     = 'user';
 
-    $username = trim($_POST['username']);
-    $email    = trim($_POST['email']);
-    $password = $_POST['password'];
-    $confirm  = $_POST['confirm_password'];
-    $type     = "user"; 
+if (!$username || !$email || !$password || !$confirm) {
+    exit('All fields are required');
+}
 
-    if (empty($username) || empty($email) || empty($password) || empty($confirm)) {
-        echo "All fields are required";
-        exit;
-    }
+if ($password !== $confirm) {
+    exit('Passwords do not match');
+}
 
-    if ($password !== $confirm) {
-        echo "Passwords do not match";
-        exit;
-    }
+/* CHECK EMAIL */
+$check = $conn->prepare("SELECT id FROM users WHERE email = ?");
+$check->bind_param("s", $email);
+$check->execute();
+$check->store_result();
 
-    if (emailExists($conn, $email)) {
-        echo "Email already registered";
-        exit;
-    }
+if ($check->num_rows > 0) {
+    exit('Email already registered');
+}
+$check->close();
 
-    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+/* PASSWORD HASH */
+$passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-    $pictureName = "default.png";
-    if (!empty($_FILES['picture']['name'])) {
-        $pictureName = time() . "_" . $_FILES['picture']['name'];
-        move_uploaded_file(
-            $_FILES['picture']['tmp_name'],
-            "../uploads/" . $pictureName
-        );
-    }
+/* IMAGE UPLOAD */
+$pictureName = 'default.png';
+$uploadPath = __DIR__ . '/../uploads/';
 
-    $stmt = $conn->prepare("
-        INSERT INTO users 
-        (email, password_hash, username, picture, created_at, type)
-        VALUES (?, ?, ?, ?, NOW(), ?)
-    ");
+if (!is_dir($uploadPath)) {
+    mkdir($uploadPath, 0777, true);
+}
 
-    $stmt->bind_param(
-        "sssss",
-        $email,
-        $passwordHash,
-        $username,
-        $pictureName,
-        $type
-    );
+if (!empty($_FILES['picture']['name'])) {
+    $ext = pathinfo($_FILES['picture']['name'], PATHINFO_EXTENSION);
+    $pictureName = time() . "_" . uniqid() . "." . $ext;
 
-    if ($stmt->execute()) {
-        echo "success";
-    } else {
-        echo "Registration failed";
+    if (!move_uploaded_file($_FILES['picture']['tmp_name'], $uploadPath . $pictureName)) {
+        exit('Image upload failed');
     }
 }
-?>
+
+/* INSERT USER */
+$stmt = $conn->prepare("
+    INSERT INTO users (email, password_hash, username, picture, type)
+    VALUES (?, ?, ?, ?, ?)
+");
+
+if (!$stmt) {
+    exit('Prepare failed: ' . $conn->error);
+}
+
+$stmt->bind_param(
+    "sssss",
+    $email,
+    $passwordHash,
+    $username,
+    $pictureName,
+    $type
+);
+
+if ($stmt->execute()) {
+    echo 'success';
+} else {
+    echo 'Database error: ' . $stmt->error;
+}
