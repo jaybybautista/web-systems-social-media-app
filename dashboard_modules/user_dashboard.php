@@ -67,7 +67,93 @@ $user = mysqli_fetch_assoc($result);
     </div>
   </div>
 
+  <div class="report-modal" id="reportModal">
+    <div class="modal-content">
+      <div class="modal-icon">⚠️</div>
+      <h3>Report Post</h3>
+      <p>Please tell us why you're reporting this post</p>
+      <form id="reportForm" action="../user_modules/report.php" method="POST">
+        <input type="hidden" name="post_id" id="reportPostId">
+        <textarea id="reportReason" name="reason" placeholder="Write your reason here..." class="report-textarea" required></textarea>
+        <div class="modal-buttons">
+          <button type="button" class="modal-cancel" id="reportCancel">Cancel</button>
+          <button type="submit" class="modal-confirm" id="reportConfirm">Submit Report</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="post-contents">
+    <?php
+    $sql = "SELECT posts.id, posts.user_id, posts.caption, posts.image, posts.created_at, users.username, users.picture 
+            FROM posts 
+            JOIN users ON posts.user_id = users.id 
+            ORDER BY posts.created_at DESC";
+    $result = mysqli_query($conn, $sql);
+
+    if ($result && mysqli_num_rows($result) > 0) {
+      while ($post = mysqli_fetch_assoc($result)) {
+        $postId = htmlspecialchars($post['id']);
+        $userId = htmlspecialchars($post['user_id']);
+        $username = htmlspecialchars($post['username']);
+        $userPicture = htmlspecialchars($post['picture'] ?? 'default.png');
+        $caption = htmlspecialchars($post['caption']);
+        $postImage = htmlspecialchars($post['image']);
+        $createdAt = date('M d, Y \a\t h:i A', strtotime($post['created_at']));
+    ?>
+        <div class="post-card">
+          <div class="post-header">
+            <div class="post-user-info">
+              <img src="../uploads/<?= $userPicture ?>" alt="Profile" class="post-profile-pic">
+              <div class="post-user-details">
+                <div class="post-username"><?= $username ?></div>
+                <div class="post-time"><?= $createdAt ?></div>
+              </div>
+            </div>
+            <button class="post-report-btn" title="Report Post">⚠️</button>
+          </div>
+
+          <div class="post-content">
+            <p class="post-caption"><?= nl2br($caption) ?></p>
+            <?php if (!empty($postImage)) { ?>
+              <img src="../user_modules/<?= $postImage ?>" alt="Post Image" class="post-image">
+            <?php } ?>
+          </div>
+
+          <div class="post-actions">
+            <button class="post-action-btn like-btn" data-post-id="<?= $postId ?>">
+              <span class="action-icon">👍</span>
+              <span class="action-text">Like</span>
+              <span class="action-count"><?= $post['like_count'] ?? 0 ?></span>
+            </button>
+            <button class="post-action-btn comment-btn" data-post-id="<?= $postId ?>">
+              <span class="action-icon">💬</span>
+              <span class="action-text">Comment</span>
+              <span class="action-count"><?= $post['comment_count'] ?? 0 ?></span>
+            </button>
+          </div>
+
+          <div class="post-comments-section" id="comments-<?= $postId ?>" style="display: none;">
+            <div class="comments-container">
+              <div class="comments-list"></div>
+            </div>
+            <div class="comment-input-area">
+              <img src="../uploads/<?= htmlspecialchars($user['picture'] ?? 'default.png') ?>" alt="Your Profile" class="comment-user-pic">
+              <input type="text" class="comment-input" placeholder="Write a comment..." data-post-id="<?= $postId ?>">
+              <button class="comment-submit-btn" data-post-id="<?= $postId ?>">Post</button>
+            </div>
+          </div>
+        </div>
+    <?php
+      }
+    } else {
+      echo '<div class="no-posts"><p>No posts yet. Be the first to share!</p></div>';
+    }
+    ?>
+  </div>
+
   <script src="../user_modules/scripts/create_post.js?v=<?= time() ?>"></script>
+  <script src="../user_modules/scripts/post_interactions.js?v=<?= time() ?>"></script>
 
 </body>
 
