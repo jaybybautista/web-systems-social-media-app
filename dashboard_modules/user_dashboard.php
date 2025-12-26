@@ -43,7 +43,7 @@ $user = mysqli_fetch_assoc($result);
       </div>
       <div><textarea name="caption" class="caption" required></textarea></div>
       <div>
-        <input type="file" name="image" accept="image*/" class="image-upload">
+        <input type="file" name="image" accept="image/*" class="image-upload">
         <div class="image-preview" style="display: none;">
           <button class="remove-image-btn">&times;</button>
           <img id="preview-img" src="" alt="Preview">
