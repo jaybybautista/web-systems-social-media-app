@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 26, 2025 at 12:03 PM
+-- Generation Time: Dec 27, 2025 at 10:51 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -36,6 +36,18 @@ CREATE TABLE `comments` (
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `comments`
+--
+
+INSERT INTO `comments` (`id`, `post_id`, `user_id`, `content`, `parent_id`, `created_at`) VALUES
+(21, 6, 1, 'qw', NULL, '2025-12-27 02:18:24'),
+(22, 6, 1, 'ewads', NULL, '2025-12-27 02:18:26'),
+(39, 7, 1, 'add', NULL, '2025-12-27 03:49:45'),
+(40, 7, 1, 'addd', NULL, '2025-12-27 03:49:51'),
+(41, 7, 1, 'asdadd', NULL, '2025-12-27 03:51:13'),
+(42, 8, 1, 'sarap', NULL, '2025-12-27 17:51:21');
+
 -- --------------------------------------------------------
 
 --
@@ -48,6 +60,30 @@ CREATE TABLE `follows` (
   `following_id` int(11) NOT NULL,
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `likes`
+--
+
+CREATE TABLE `likes` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `post_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `likes`
+--
+
+INSERT INTO `likes` (`id`, `user_id`, `post_id`, `created_at`) VALUES
+(7, 1, 4, '2025-12-26 16:43:43'),
+(8, 1, 3, '2025-12-26 16:43:44'),
+(9, 1, 2, '2025-12-26 16:43:47'),
+(14, 1, 7, '2025-12-26 17:15:23'),
+(15, 1, 6, '2025-12-26 17:32:29');
 
 -- --------------------------------------------------------
 
@@ -99,7 +135,8 @@ CREATE TABLE `reports` (
 
 INSERT INTO `reports` (`id`, `post_id`, `user_id`, `reason`, `created_at`) VALUES
 (1, 6, 1, 'di masarap umay', '2025-12-26 12:41:53'),
-(2, 5, 1, 'cute ng aso pero hindi naman sakin wahahaha', '2025-12-26 12:42:17');
+(2, 5, 1, 'cute ng aso pero hindi naman sakin wahahaha', '2025-12-26 12:42:17'),
+(3, 7, 1, 'dipa luto', '2025-12-27 03:15:08');
 
 -- --------------------------------------------------------
 
@@ -151,6 +188,13 @@ ALTER TABLE `follows`
   ADD KEY `following_id` (`following_id`);
 
 --
+-- Indexes for table `likes`
+--
+ALTER TABLE `likes`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_id` (`user_id`,`post_id`);
+
+--
 -- Indexes for table `posts`
 --
 ALTER TABLE `posts`
@@ -181,13 +225,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `comments`
 --
 ALTER TABLE `comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
 -- AUTO_INCREMENT for table `follows`
 --
 ALTER TABLE `follows`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `likes`
+--
+ALTER TABLE `likes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `posts`
@@ -199,7 +249,7 @@ ALTER TABLE `posts`
 -- AUTO_INCREMENT for table `reports`
 --
 ALTER TABLE `reports`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `users`

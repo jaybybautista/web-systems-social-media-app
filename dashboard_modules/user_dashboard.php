@@ -120,17 +120,32 @@ $user = mysqli_fetch_assoc($result);
             <?php } ?>
           </div>
 
+          <?php
+            $likeCountQuery = mysqli_query(
+            $conn, "SELECT COUNT(*) AS total FROM likes WHERE post_id = $postId");
+            $likeCount = mysqli_fetch_assoc($likeCountQuery)['total'];
+          ?>
+
+            <!-- Like -->
           <div class="post-actions">
             <button class="post-action-btn like-btn" data-post-id="<?= $postId ?>">
-              <span class="action-icon">👍</span>
-              <span class="action-text">Like</span>
-              <span class="action-count"><?= $post['like_count'] ?? 0 ?></span>
+              👍 Like
+            <span class="action-count" id="like-count-<?= $postId ?>">
+            <?= $likeCount ?>
+            </span>
             </button>
-            <button class="post-action-btn comment-btn" data-post-id="<?= $postId ?>">
-              <span class="action-icon">💬</span>
-              <span class="action-text">Comment</span>
-              <span class="action-count"><?= $post['comment_count'] ?? 0 ?></span>
-            </button>
+
+            <!-- comment -->
+             <?php
+              $commentCountQuery = mysqli_query($conn, "SELECT COUNT(*) as total FROM comments WHERE post_id = $postId");
+              $commentCount = mysqli_fetch_assoc($commentCountQuery)['total'];
+              ?>
+              
+              <button class="post-action-btn comment-btn" data-post-id="<?= $postId ?>">
+                <span class="action-icon">💬</span>
+                <span class="action-text">Comment</span>
+                <span class="action-count"><?= $commentCount ?></span>
+              </button>
           </div>
 
           <div class="post-comments-section" id="comments-<?= $postId ?>" style="display: none;">
