@@ -5,7 +5,6 @@ session_start();
 $error = "";
 
 if (isset($_POST['submit'])) {
-
     $email = trim($_POST['email']);
     $password = trim($_POST['password']);
 
@@ -19,19 +18,16 @@ if (isset($_POST['submit'])) {
 
         if ($result->num_rows === 1) {
             $row = $result->fetch_assoc();
-
             if (password_verify($password, $row['password_hash'])) {
                 $_SESSION['id'] = $row['id'];
                 $_SESSION['type'] = $row['type'];
 
                 if ($row['type'] === "user") {
                     header("Location: ../dashboard_modules/user_dashboard.php");
-                    exit();
-                } elseif ($row['type'] === "admin") {
+                } else {
                     header("Location: ../dashboard_modules/admin_dashboard.php");
-                    exit();
                 }
-
+                exit();
             } else {
                 $error = "Wrong login credentials";
             }
@@ -45,93 +41,164 @@ if (isset($_POST['submit'])) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Login - MySocial</title>
-    <style>
-        * { box-sizing:border-box; margin:0; padding:0; font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        body { display:flex; justify-content:center; align-items:center; min-height:100vh; background:#e0f2f1; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login – MySocial</title>
 
-        .login-card {
-            background:#ffffff;
-            padding:40px 30px;
-            border-radius:14px;
-            max-width:400px;
-            width:100%;
-            box-shadow:0 8px 25px rgba(0,0,0,0.08);
-            text-align:center;
-        }
+<style>
+:root {
+    --bg-dark: #051115;
+    --card-bg: #112229;
+    --accent-blue: #4db6ff;
+    --accent-hover: #70c4ff;
+    --text-white: #ffffff;
+    --text-gray: #94a3b8;
+    --border-color: #2a3f47;
+    --error-red: #ff4d4d;
+}
 
-        .login-card h2 {
-            color:#00796b;
-            margin-bottom:25px;
-        }
+/* RESET */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
 
-        .login-card input[type="email"], .login-card input[type="password"] {
-            width:100%;
-            padding:12px 15px;
-            margin-bottom:15px;
-            border:1px solid #b2dfdb;
-            border-radius:6px;
-            font-size:14px;
-        }
+body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--bg-dark);
+    /* Subtle background glow to match the app vibe */
+    background-image: radial-gradient(circle at 10% 20%, rgba(77, 182, 255, 0.05) 0%, transparent 50%);
+}
 
-        .login-card input[type="submit"] {
-            width:100%;
-            padding:12px 15px;
-            background:#009688;
-            border:none;
-            border-radius:6px;
-            color:#fff;
-            font-size:16px;
-            cursor:pointer;
-            transition:0.2s;
-        }
+/* DARK LOGIN CARD */
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 50px 40px;
+    border-radius: 30px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    text-align: center;
+}
 
-        .login-card input[type="submit"]:hover {
-            background:#00796b;
-        }
+/* BRANDING */
+.login-card h2 {
+    font-size: 32px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: var(--text-white);
+    letter-spacing: -1px;
+}
 
-        .login-card p {
-            margin-top:15px;
-            font-size:14px;
-        }
+.login-card .subtitle {
+    color: var(--text-gray);
+    font-size: 14px;
+    margin-bottom: 35px;
+    display: block;
+}
 
-        .login-card a {
-            color:#00796b;
-            text-decoration:none;
-        }
+/* INPUTS */
+.login-card input:not([type="submit"]) {
+    width: 100%;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-white);
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
 
-        .login-card a:hover {
-            text-decoration:underline;
-        }
+.login-card input:not([type="submit"]):focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 4px rgba(77, 182, 255, 0.1);
+}
 
-        .error-msg {
-            color:red;
-            margin-bottom:15px;
-            font-size:14px;
-        }
+/* BUTTON */
+.login-card input[type="submit"] {
+    width: 100%;
+    margin-top: 10px;
+    padding: 16px;
+    border-radius: 50px;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    color: #051115;
+    cursor: pointer;
+    background: var(--accent-blue);
+    transition: all 0.2s ease;
+}
 
-        @media(max-width:500px){
-            .login-card { padding:30px 20px; }
-        }
-    </style>
+.login-card input[type="submit"]:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(77, 182, 255, 0.2);
+}
+
+/* ERROR MESSAGE */
+.error-msg {
+    margin-bottom: 20px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255, 77, 77, 0.1);
+    border: 1px solid rgba(255, 77, 77, 0.2);
+    font-size: 14px;
+    color: var(--error-red);
+}
+
+/* FOOTER */
+.login-card p {
+    margin-top: 25px;
+    font-size: 14px;
+    color: var(--text-gray);
+}
+
+.login-card a {
+    color: var(--accent-blue);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.login-card a:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+    .login-card {
+        margin: 20px;
+        padding: 40px 25px;
+    }
+}
+</style>
 </head>
+
 <body>
 
 <div class="login-card">
-    <h2>Login to MySocial</h2>
+    <h2>MySocial</h2>
+    <span class="subtitle">Welcome back! Please enter your details.</span>
 
     <?php if (!empty($error)): ?>
-        <p class="error-msg"><?php echo $error; ?></p>
+        <div class="error-msg"><?php echo $error; ?></div>
     <?php endif; ?>
 
     <form method="post">
-        <input type="email" name="email" placeholder="Email" required>
+        <input type="email" name="email" placeholder="Email Address" required>
         <input type="password" name="password" placeholder="Password" required>
-        <input type="submit" name="submit" value="Login">
+        <input type="submit" name="submit" value="Sign In">
     </form>
 
-    <p>No account? <a href="register.php">Sign-up</a></p>
+    <p>Don't have an account? <a href="register.php">Create account</a></p>
 </div>
 
 </body>
