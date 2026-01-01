@@ -20,6 +20,7 @@ $user = mysqli_fetch_assoc($result);
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Newsfeed | MySocial</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <style>
     :root {
       --bg-dark: #051115;
@@ -29,6 +30,9 @@ $user = mysqli_fetch_assoc($result);
       --text-white: #ffffff;
       --text-gray: #94a3b8;
       --border-color: #2a3f47;
+      --glass-bg: rgba(255, 255, 255, 0.03);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --insta-red: #ff3040;
     }
 
     * {
@@ -186,6 +190,18 @@ $user = mysqli_fetch_assoc($result);
       gap: 15px;
     }
 
+    .profile-link {
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .profile-link:hover .post-username {
+      color: var(--accent-blue);
+    }
+
     .post-profile-pic {
       width: 55px;
       height: 55px;
@@ -194,14 +210,32 @@ $user = mysqli_fetch_assoc($result);
     }
 
     .post-username {
-      display: block;
       font-weight: bold;
       font-size: 17px;
+      transition: color 0.2s;
+    }
+
+    .follow-btn {
+      background: transparent;
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+      border-radius: 20px;
+      padding: 2px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-left: 10px;
+      transition: 0.3s;
+    }
+
+    .follow-btn.following {
+      background: var(--accent-blue);
+      color: black;
     }
 
     .post-time {
       font-size: 13px;
       color: var(--text-gray);
+      display: block;
     }
 
     /* --- OPTIONS MENU (THREE DOTS) --- */
@@ -269,9 +303,10 @@ $user = mysqli_fetch_assoc($result);
       cursor: pointer;
     }
 
+    /* --- IMPROVED HEART & ACTIONS --- */
     .post-actions {
       display: flex;
-      gap: 25px;
+      gap: 20px;
       margin-top: 20px;
       padding-top: 15px;
       border-top: 1px solid var(--border-color);
@@ -280,29 +315,56 @@ $user = mysqli_fetch_assoc($result);
     .action-btn {
       background: none;
       border: none;
-      color: white;
+      color: var(--text-white);
       cursor: pointer;
-      font-size: 22px;
       display: flex;
       align-items: center;
       gap: 8px;
-      transition: transform 0.2s;
+      padding: 5px;
+      transition: transform 0.1s ease;
     }
 
-    .action-btn:hover {
-      transform: scale(1.1);
+    .action-btn i {
+      font-size: 24px;
+      transition: color 0.3s ease;
     }
 
-    .action-btn.active {
-      color: #ff4d4d;
+    /* Instagram Heart Pop Animation */
+    @keyframes heart-pop {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.3);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .like-btn.active i {
+      color: var(--insta-red);
+      animation: heart-pop 0.3s linear;
+    }
+
+    .like-btn.active .heart-icon::before {
+      content: "\f004";
+      font-weight: 900;
+    }
+
+    .comment-btn:hover i {
+      color: var(--accent-blue);
     }
 
     .action-count {
       font-size: 15px;
-      color: var(--text-gray);
+      font-weight: 600;
+      color: var(--text-white);
     }
 
-    /* --- PROFILE-STYLE POST MODAL --- */
+    /* --- MODAL --- */
     .modal {
       position: fixed;
       inset: 0;
@@ -334,12 +396,14 @@ $user = mysqli_fetch_assoc($result);
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
     }
 
     .modal-left img {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
+      display: block;
     }
 
     .modal-right {
@@ -356,9 +420,29 @@ $user = mysqli_fetch_assoc($result);
       flex: 1;
       overflow-y: auto;
       margin-bottom: 15px;
+      padding-right: 5px;
     }
 
     .comment-input-area {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    #replying-to-info {
+      display: none;
+      font-size: 12px;
+      color: var(--accent-blue);
+      background: rgba(77, 182, 255, 0.1);
+      padding: 5px 10px;
+      border-radius: 5px;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .comment-input-area .input-row {
       display: flex;
       gap: 10px;
     }
@@ -372,7 +456,61 @@ $user = mysqli_fetch_assoc($result);
       color: white;
     }
 
-    /* --- UPLOAD FORM MODAL --- */
+    /* --- GLASS REPLIES & THREADING --- */
+    .comment-container {
+      margin-bottom: 15px;
+    }
+
+    .comment-item {
+      padding: 12px;
+      border-radius: 15px;
+      position: relative;
+      background: var(--glass-bg);
+      backdrop-filter: blur(5px);
+      border: 1px solid var(--glass-border);
+      margin-bottom: 8px;
+    }
+
+    .replies-wrapper {
+      margin-left: 30px;
+      border-left: 1px solid var(--border-color);
+      padding-left: 15px;
+    }
+
+    .comment-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      align-items: center;
+    }
+
+    .comment-actions span {
+      cursor: pointer;
+      font-size: 11px;
+      color: var(--text-gray);
+      letter-spacing: 0.5px;
+      transition: color 0.2s;
+    }
+
+    .comment-actions span:hover {
+      color: var(--accent-blue);
+    }
+
+    .delete-action:hover {
+      color: #ff4d4d !important;
+    }
+
+    .comment-react-btn {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .comment-react-btn.active {
+      color: var(--insta-red) !important;
+    }
+
     .upload-form {
       position: fixed;
       inset: 0;
@@ -402,7 +540,6 @@ $user = mysqli_fetch_assoc($result);
     <a href="../user_modules/profile.php">Profile</a>
     <a href="user_dashboard.php"
       style="background: rgba(77, 182, 255, 0.1); border-color: var(--accent-blue);">Newsfeed</a>
-
     <button class="create-post-btn">Create Post</button>
     <a href="../logout.php" class="logout" style="margin-top: 50px;">Logout</a>
   </div>
@@ -423,7 +560,8 @@ $user = mysqli_fetch_assoc($result);
       $sql = "SELECT p.*, u.username, u.picture,
                     (SELECT COUNT(*) FROM likes WHERE post_id = p.id) AS like_count,
                     (SELECT COUNT(*) FROM comments WHERE post_id = p.id) AS comment_count,
-                    EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $id) AS liked
+                    EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = $id) AS liked,
+                    EXISTS(SELECT 1 FROM follows WHERE follower_id = $id AND following_id = p.user_id) AS is_following
                     FROM posts p
                     JOIN users u ON p.user_id = u.id
                     ORDER BY p.created_at DESC";
@@ -434,13 +572,21 @@ $user = mysqli_fetch_assoc($result);
           <div class="post-card" data-id="<?= $post['id'] ?>">
             <div class="post-header">
               <div class="user-meta">
-                <img src="../uploads/<?= htmlspecialchars($post['picture'] ?? 'default.png') ?>" class="post-profile-pic">
-                <div>
-                  <span class="post-username"><?= htmlspecialchars($post['username']) ?></span>
-                  <span class="post-time"><?= date('M d, Y h:i A', strtotime($post['created_at'])) ?></span>
-                </div>
-              </div>
+                <a href="view_profile.php?user_id=<?= $post['user_id'] ?>" class="profile-link">
+                  <img src="../uploads/<?= htmlspecialchars($post['picture'] ?? 'default.png') ?>" class="post-profile-pic">
+                  <div>
+                    <span class="post-username"><?= htmlspecialchars($post['username']) ?></span>
+                    <span class="post-time"><?= date('M d, Y h:i A', strtotime($post['created_at'])) ?></span>
+                  </div>
+                </a>
 
+                <?php if ($post['user_id'] != $id): ?>
+                  <button class="follow-btn <?= $post['is_following'] ? 'following' : '' ?>"
+                    onclick="toggleFollow(this, <?= $post['user_id'] ?>)">
+                    <?= $post['is_following'] ? 'Following' : 'Follow' ?>
+                  </button>
+                <?php endif; ?>
+              </div>
               <div class="options-container">
                 <button class="three-dots-btn">⋮</button>
                 <div class="options-menu">
@@ -460,11 +606,11 @@ $user = mysqli_fetch_assoc($result);
 
             <div class="post-actions">
               <button class="action-btn like-btn <?= $post['liked'] ? 'active' : '' ?>">
-                <span class="heart-icon"><?= $post['liked'] ? '❤️' : '♡' ?></span>
+                <i class="fa-<?= $post['liked'] ? 'solid' : 'regular' ?> fa-heart heart-icon"></i>
                 <span class="action-count"><?= $post['like_count'] ?></span>
               </button>
               <button class="action-btn comment-btn" onclick="openPostModal(this)">
-                <span>🗨️</span>
+                <i class="fa-regular fa-comment"></i>
                 <span class="action-count"><?= $post['comment_count'] ?></span>
               </button>
             </div>
@@ -485,9 +631,15 @@ $user = mysqli_fetch_assoc($result);
       <div class="modal-right">
         <div class="comments-list" id="modalComments"></div>
         <form class="comment-input-area" id="commentForm">
-          <input type="text" id="commentInput" placeholder="Write a comment..." required>
-          <button type="submit"
-            style="background:var(--accent-blue); border:none; padding:10px 15px; border-radius:10px; cursor:pointer; color:black; font-weight:bold;">Post</button>
+          <div id="replying-to-info">
+            <span>Replying to <b id="reply-username"></b></span>
+            <span onclick="cancelReply()" style="cursor:pointer;">&times;</span>
+          </div>
+          <div class="input-row">
+            <input type="text" id="commentInput" placeholder="Write a comment..." required>
+            <button type="submit"
+              style="background:var(--accent-blue); border:none; padding:10px 15px; border-radius:10px; cursor:pointer; color:black; font-weight:bold;">Post</button>
+          </div>
         </form>
       </div>
     </div>
@@ -513,6 +665,8 @@ $user = mysqli_fetch_assoc($result);
 
   <script>
     let currentPostId = null;
+    let currentParentId = null;
+    const loggedInUserId = <?= $id ?>;
     const modal = document.getElementById('postModal');
     const modalImg = document.getElementById('modalImg');
 
@@ -522,7 +676,15 @@ $user = mysqli_fetch_assoc($result);
       const postImg = card.querySelector(".post-image");
 
       modalImg.src = postImg ? postImg.src : "";
+
+      if (!modalImg.src || modalImg.src.includes('undefined') || modalImg.src === window.location.href) {
+        document.querySelector('.modal-left').style.display = 'none';
+      } else {
+        document.querySelector('.modal-left').style.display = 'flex';
+      }
+
       modal.classList.add("show");
+      cancelReply();
       loadComments(currentPostId);
     }
 
@@ -530,41 +692,111 @@ $user = mysqli_fetch_assoc($result);
       if (e.target === modal) {
         modal.classList.remove("show");
         currentPostId = null;
+        cancelReply();
       }
       document.querySelectorAll(".options-menu").forEach(m => m.style.display = "none");
     };
 
+    /**
+     * LOAD COMMENTS: 
+     * Modified to receive HTML directly from get_comments.php
+     */
     function loadComments(postId) {
       const commentsContainer = document.getElementById('modalComments');
       commentsContainer.innerHTML = '<p style="color:gray; padding:10px;">Loading comments...</p>';
 
       fetch("../user_modules/get_comments.php?post_id=" + postId)
+        .then(r => r.text()) // Changed from r.json() to r.text()
+        .then(html => {
+          commentsContainer.innerHTML = html;
+        })
+        .catch(err => {
+          console.error(err);
+          commentsContainer.innerHTML = '<p style="color:red; padding:10px;">Error loading comments.</p>';
+        });
+    }
+
+    // Note: The renderComments JS function is no longer needed because 
+    // the backend get_comments.php is now doing the HTML rendering. 
+
+    function reactToComment(commentId, btn) {
+      fetch("../user_modules/like_comment.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `comment_id=${commentId}`
+      })
         .then(r => r.json())
         .then(data => {
-          if (data.comments && data.comments.length > 0) {
-            commentsContainer.innerHTML = data.comments.map(c => `
-              <div style="margin-bottom:15px; font-size:14px;">
-                <strong style="color:var(--accent-blue)">${c.username}</strong>
-                <span style="display:block; margin-top:3px;">${c.content}</span>
-              </div>
-            `).join('');
-          } else {
-            commentsContainer.innerHTML = '<p style="color:gray; padding:10px;">No comments yet.</p>';
+          if (data.success) {
+            btn.classList.toggle('active', data.liked);
+            const iconClass = data.liked ? 'fa-solid' : 'fa-regular';
+            btn.innerHTML = `<i class="${iconClass} fa-heart"></i> <span class="react-count">${data.like_count}</span>`;
           }
+        });
+    }
+
+    function setReply(commentId, username) {
+      currentParentId = commentId;
+      document.getElementById('reply-username').innerText = username;
+      document.getElementById('replying-to-info').style.display = 'flex';
+      document.getElementById('commentInput').focus();
+    }
+
+    function cancelReply() {
+      currentParentId = null;
+      document.getElementById('replying-to-info').style.display = 'none';
+      document.getElementById('commentInput').value = "";
+    }
+
+    function deleteComment(commentId) {
+      if (!confirm("Are you sure? This will delete all replies under this comment too.")) return;
+      fetch("../user_modules/delete_comment.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `comment_id=${commentId}`
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) loadComments(currentPostId);
+          else alert(data.message);
+        });
+    }
+
+    function editComment(commentId, oldContent) {
+      const newContent = prompt("Edit your comment:", oldContent);
+      if (!newContent || newContent.trim() === "" || newContent === oldContent) return;
+      fetch("../user_modules/edit_comment.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `comment_id=${commentId}&comment_text=${encodeURIComponent(newContent)}`
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) loadComments(currentPostId);
         });
     }
 
     document.getElementById('commentForm').onsubmit = e => {
       e.preventDefault();
       const input = document.getElementById('commentInput');
+      const commentText = input.value;
+
+      let bodyData = `post_id=${currentPostId}&comment_text=${encodeURIComponent(commentText)}`;
+      if (currentParentId) {
+        bodyData += `&parent_id=${currentParentId}`;
+      }
 
       fetch("../user_modules/add_comment.php", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `post_id=${currentPostId}&comment_text=${encodeURIComponent(input.value)}`
-      }).then(() => {
-        input.value = "";
-        loadComments(currentPostId);
+        body: bodyData
+      }).then(r => r.json()).then(data => {
+        if (data.success) {
+          cancelReply();
+          loadComments(currentPostId);
+        } else {
+          alert(data.message);
+        }
       });
     };
 
@@ -584,22 +816,26 @@ $user = mysqli_fetch_assoc($result);
         e.stopPropagation();
         const card = this.closest(".post-card");
         const postId = card.dataset.id;
-        const heart = this.querySelector(".heart-icon");
+        const icon = this.querySelector("i");
         const count = this.querySelector(".action-count");
 
         fetch("../user_modules/like_post.php", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: "post_id=" + postId
-        })
-          .then(r => r.json())
-          .then(data => {
-            if (data.success) {
-              count.innerText = data.like_count;
-              this.classList.toggle("active");
-              heart.innerText = this.classList.contains("active") ? "❤️" : "♡";
+        }).then(r => r.json()).then(data => {
+          if (data.success) {
+            count.innerText = data.like_count;
+            this.classList.toggle("active");
+            if (this.classList.contains("active")) {
+              icon.classList.remove("fa-regular");
+              icon.classList.add("fa-solid");
+            } else {
+              icon.classList.remove("fa-solid");
+              icon.classList.add("fa-regular");
             }
-          });
+          }
+        });
       };
     });
 
@@ -610,26 +846,27 @@ $user = mysqli_fetch_assoc($result);
 
     function reportPost(postId) {
       const reason = prompt("Why are you reporting this post?");
-      if (reason === null) return;
-      if (reason.trim() === "") {
-        alert("Reason is required.");
-        return;
-      }
-
+      if (!reason || reason.trim() === "") return;
       fetch("../user_modules/submit_report.php", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: `post_id=${postId}&reason=${encodeURIComponent(reason)}`
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
-            alert("Report submitted successfully.");
-            document.querySelectorAll(".options-menu").forEach(m => m.style.display = "none");
-          } else {
-            alert("Error: " + data.message);
-          }
-        });
+      }).then(r => r.json()).then(data => {
+        if (data.success) alert("Report submitted.");
+      });
+    }
+
+    function toggleFollow(btn, targetUserId) {
+      fetch("../user_modules/follow_user.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "following_id=" + targetUserId
+      }).then(r => r.json()).then(data => {
+        if (data.success) {
+          btn.classList.toggle('following');
+          btn.innerText = btn.classList.contains('following') ? 'Following' : 'Follow';
+        }
+      });
     }
   </script>
 </body>

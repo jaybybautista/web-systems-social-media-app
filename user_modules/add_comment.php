@@ -5,12 +5,16 @@ require '../config.php';
 header('Content-Type: application/json');
 
 /* =====================
-   AUTH & INPUT
+    AUTH & INPUT
 ===================== */
 $user_id = $_SESSION['id'] ?? null;
 $post_id = isset($_POST['post_id']) ? (int) $_POST['post_id'] : 0;
-$content = trim($_POST['comment_text'] ?? '');
-$parent_id = isset($_POST['parent_id']) && $_POST['parent_id'] !== ''
+
+// Fix: Match the JavaScript keys 'comment_text' sent from the profile.php
+$content = trim($_POST['comment_text'] ?? $_POST['content'] ?? '');
+
+// Modified: Ensure parent_id 0 is treated as NULL for the database
+$parent_id = (isset($_POST['parent_id']) && $_POST['parent_id'] !== '' && (int) $_POST['parent_id'] !== 0)
     ? (int) $_POST['parent_id']
     : null;
 
@@ -23,7 +27,7 @@ if (!$user_id || !$post_id || $content === '') {
 }
 
 /* =====================
-   VERIFY POST EXISTS
+    VERIFY POST EXISTS
 ===================== */
 $stmt = $conn->prepare("SELECT id FROM posts WHERE id = ?");
 $stmt->bind_param("i", $post_id);
@@ -40,7 +44,7 @@ if ($stmt->num_rows === 0) {
 $stmt->close();
 
 /* =====================
-   VERIFY PARENT COMMENT (IF REPLY)
+    VERIFY PARENT COMMENT (IF REPLY)
 ===================== */
 if ($parent_id !== null) {
     $stmt = $conn->prepare("
@@ -62,18 +66,21 @@ if ($parent_id !== null) {
 }
 
 /* =====================
-   INSERT COMMENT
+    INSERT COMMENT
 ===================== */
+// Modified: Standardized parameters for safer binding
 $stmt = $conn->prepare("
     INSERT INTO comments (post_id, user_id, content, parent_id, created_at)
     VALUES (?, ?, ?, ?, NOW())
 ");
+
+// Crucial Fix: If parent_id is null, mysqli bind_param handles it better when explicitly passed
 $stmt->bind_param("iisi", $post_id, $user_id, $content, $parent_id);
 
 if (!$stmt->execute()) {
     echo json_encode([
         'success' => false,
-        'message' => 'Failed to save comment'
+        'message' => 'Failed to save comment: ' . $stmt->error
     ]);
     exit;
 }
@@ -82,7 +89,7 @@ $comment_id = $stmt->insert_id;
 $stmt->close();
 
 /* =====================
-   FETCH NEW COMMENT
+    FETCH NEW COMMENT
 ===================== */
 $stmt = $conn->prepare("
     SELECT
@@ -103,7 +110,7 @@ $comment = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 /* =====================
-   UPDATED COMMENT COUNT
+    UPDATED COMMENT COUNT
 ===================== */
 $stmt = $conn->prepare("
     SELECT COUNT(*) FROM comments WHERE post_id = ?
@@ -115,7 +122,7 @@ $stmt->fetch();
 $stmt->close();
 
 /* =====================
-   RESPONSE
+    RESPONSE
 ===================== */
 echo json_encode([
     'success' => true,

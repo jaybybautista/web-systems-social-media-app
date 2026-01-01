@@ -3,19 +3,22 @@ session_start();
 include('../config.php');
 header('Content-Type: application/json');
 
-$user_id    = $_SESSION['id'] ?? null;
+$user_id = $_SESSION['id'] ?? null;
 $comment_id = intval($_POST['comment_id'] ?? 0);
-$content    = trim($_POST['content'] ?? '');
+
+// Matches the JavaScript body: `comment_id=${id}&content=${encodeURIComponent(newText)}`
+$content = trim($_POST['content'] ?? '');
 
 if (!$user_id || !$comment_id || $content === '') {
     echo json_encode([
         'success' => false,
-        'message' => 'Invalid data'
+        'message' => 'Invalid data or session expired'
     ]);
     exit;
 }
 
-/* VERIFY COMMENT OWNERSHIP */
+/* 1. VERIFY COMMENT OWNERSHIP & EXISTENCE */
+// We use a prepared statement to check if the comment exists and who it belongs to
 $stmt = $conn->prepare("
     SELECT user_id 
     FROM comments 
@@ -24,32 +27,50 @@ $stmt = $conn->prepare("
 $stmt->bind_param("i", $comment_id);
 $stmt->execute();
 $stmt->bind_result($owner_id);
-$stmt->fetch();
+$fetched = $stmt->fetch();
 $stmt->close();
 
-if ($owner_id !== $user_id) {
+if (!$fetched) {
     echo json_encode([
         'success' => false,
-        'message' => 'Unauthorized'
+        'message' => 'Comment not found'
     ]);
     exit;
 }
 
-/* UPDATE COMMENT */
+// Security Check: Ensure the person logged in is the one who wrote the comment
+if (intval($owner_id) !== intval($user_id)) {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Unauthorized: You do not own this comment'
+    ]);
+    exit;
+}
+
+/* 2. UPDATE COMMENT */
 $stmt = $conn->prepare("
     UPDATE comments 
     SET content = ? 
-    WHERE id = ?
+    WHERE id = ? AND user_id = ?
 ");
-$stmt->bind_param("si", $content, $comment_id);
-$stmt->execute();
-$stmt->close();
+$stmt->bind_param("sii", $content, $comment_id, $user_id);
 
-/* RETURN UPDATED COMMENT */
-echo json_encode([
-    'success' => true,
-    'comment' => [
-        'id' => $comment_id,
-        'content' => htmlspecialchars($content, ENT_QUOTES, 'UTF-8')
-    ]
-]);
+if ($stmt->execute()) {
+    $stmt->close();
+
+    /* 3. RETURN UPDATED DATA */
+    echo json_encode([
+        'success' => true,
+        'message' => 'Comment updated successfully',
+        'comment' => [
+            'id' => $comment_id,
+            'content' => $content
+        ]
+    ]);
+} else {
+    echo json_encode([
+        'success' => false,
+        'message' => 'Database error during update'
+    ]);
+}
+?>

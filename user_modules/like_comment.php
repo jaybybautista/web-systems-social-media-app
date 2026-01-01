@@ -40,6 +40,7 @@ if ($stmt->num_rows === 0) {
 $stmt->close();
 
 /* CHECK IF ALREADY LIKED */
+// Note: Ensure your table name is 'comment_likes'
 $stmt = $conn->prepare("
     SELECT id
     FROM comment_likes
@@ -89,12 +90,14 @@ try {
 
     $conn->commit();
 
+    /* SUCCESS RESPONSE */
     echo json_encode([
         'success' => true,
-        'liked' => !$alreadyLiked,
+        'liked' => !$alreadyLiked, // Returns true if it was just liked, false if unliked
         'like_count' => (int) $like_count,
         'comment_id' => $comment_id
     ]);
+
 } catch (Exception $e) {
     $conn->rollback();
     echo json_encode([
@@ -102,3 +105,4 @@ try {
         'message' => 'Failed to toggle like'
     ]);
 }
+?>

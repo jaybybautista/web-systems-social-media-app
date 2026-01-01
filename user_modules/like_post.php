@@ -19,18 +19,22 @@ $stmt->bind_param("ii", $userId, $postId);
 $stmt->execute();
 $result = $stmt->get_result();
 
+$liked = false; // Variable to track action for frontend
+
 if ($result->num_rows > 0) {
-    // User already liked -> remove like
+    // User already liked -> remove like (Unlike)
     $sqlDelete = "DELETE FROM likes WHERE user_id=? AND post_id=?";
     $stmtDel = $conn->prepare($sqlDelete);
     $stmtDel->bind_param("ii", $userId, $postId);
     $stmtDel->execute();
+    $liked = false;
 } else {
-    // User has not liked -> insert like
+    // User has not liked -> insert like (Like)
     $sqlInsert = "INSERT INTO likes(user_id, post_id) VALUES(?, ?)";
     $stmtIns = $conn->prepare($sqlInsert);
     $stmtIns->bind_param("ii", $userId, $postId);
     $stmtIns->execute();
+    $liked = true;
 }
 
 // Get updated like count
@@ -41,4 +45,9 @@ $stmtCount->execute();
 $countResult = $stmtCount->get_result()->fetch_assoc();
 $likeCount = $countResult['like_count'];
 
-echo json_encode(['success' => true, 'like_count' => $likeCount]);
+// Returns liked state so the UI can change heart color/icon
+echo json_encode([
+    'success' => true,
+    'like_count' => $likeCount,
+    'liked' => $liked
+]);

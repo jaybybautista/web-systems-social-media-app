@@ -18,11 +18,23 @@ $stmt->bind_param("i", $userId);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 
+/* FOLLOWERS LIST */
+$stmt_followers = $conn->prepare("
+    SELECT u.id, u.username, u.picture 
+    FROM follows f 
+    JOIN users u ON f.follower_id = u.id 
+    WHERE f.following_id = ?
+    ORDER BY f.created_at DESC
+");
+$stmt_followers->bind_param("i", $userId);
+$stmt_followers->execute();
+$followers_res = $stmt_followers->get_result();
+
 /* POSTS */
 $stmt = $conn->prepare("
     SELECT p.*, u.username, u.picture,
-        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) AS like_count,
         (SELECT COUNT(*) FROM comments WHERE post_id = p.id) AS comment_count,
+        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) AS like_count,
         EXISTS(
             SELECT 1 FROM likes WHERE post_id = p.id AND user_id = ?
         ) AS liked
@@ -42,6 +54,7 @@ $posts = $stmt->get_result();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile | MySocial</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <style>
         :root {
@@ -52,6 +65,7 @@ $posts = $stmt->get_result();
             --text-white: #ffffff;
             --text-gray: #94a3b8;
             --border-color: #2a3f47;
+            --insta-red: #ff3040;
         }
 
         * {
@@ -67,7 +81,6 @@ $posts = $stmt->get_result();
             min-height: 100vh;
         }
 
-        /* --- SIDEBAR --- */
         .sidebar-left {
             width: 250px;
             padding: 40px 20px;
@@ -76,6 +89,16 @@ $posts = $stmt->get_result();
             position: sticky;
             top: 0;
             border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar-right {
+            width: 300px;
+            padding: 40px 20px;
+            background-color: var(--sidebar-bg);
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .logo {
@@ -103,47 +126,92 @@ $posts = $stmt->get_result();
             border-color: var(--accent-blue);
         }
 
-        /* --- CONTENT AREA --- */
+        .follower-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .follower-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            border-radius: 15px;
+            transition: 0.2s;
+            cursor: pointer;
+            margin-bottom: 10px;
+            border: 1px solid transparent;
+        }
+
+        .follower-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--border-color);
+        }
+
+        .follower-item img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .follower-item span {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
         .content {
             flex: 1;
             padding: 40px;
             overflow-y: auto;
         }
 
-        /* --- PROFILE SECTION --- */
         .profile-card {
             max-width: 900px;
             margin: 0 auto;
             background: var(--card-bg);
             border-radius: 30px;
             overflow: hidden;
-            border: 2px solid var(--border-color);
+            border: 1px solid var(--border-color);
             position: relative;
-            padding-bottom: 30px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
         }
 
         .cover {
-            height: 240px;
+            height: 280px;
             background: url('../uploads/<?= htmlspecialchars($user['cover_picture'] ?? 'default_cover.jpg') ?>') center/cover;
-            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .cover::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: linear-gradient(to top, var(--card-bg), transparent);
         }
 
         .profile-header-info {
             display: flex;
             align-items: flex-end;
             padding: 0 40px;
-            margin-top: -60px;
-            gap: 20px;
+            margin-top: -80px;
+            gap: 25px;
             position: relative;
+            z-index: 2;
         }
 
         .profile-header-info img {
-            width: 130px;
-            height: 130px;
-            border-radius: 50%;
-            border: 5px solid var(--card-bg);
+            width: 160px;
+            height: 160px;
+            border-radius: 40px;
+            border: 6px solid var(--card-bg);
             object-fit: cover;
             background: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .user-details {
@@ -153,38 +221,52 @@ $posts = $stmt->get_result();
 
         .user-details h2 {
             margin: 0;
-            font-size: 22px;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
         }
 
         .user-details p {
             margin: 5px 0;
+            color: var(--accent-blue);
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .profile-actions {
+            padding: 25px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .bio-text {
             color: var(--text-gray);
-            font-size: 14px;
+            font-size: 15px;
+            line-height: 1.6;
+            max-width: 500px;
+            margin: 0;
         }
 
         .edit-profile-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-color);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 50px;
+            background: var(--accent-blue);
+            border: none;
+            color: #000;
+            padding: 12px 25px;
+            border-radius: 12px;
             cursor: pointer;
             font-size: 14px;
-            transition: 0.2s;
+            font-weight: 700;
+            transition: 0.3s;
         }
 
         .edit-profile-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(77, 182, 255, 0.4);
+            filter: brightness(1.1);
         }
 
-        .bio-display {
-            text-align: center;
-            margin-top: 30px;
-            color: var(--text-gray);
-            font-style: italic;
-        }
-
-        /* --- POSTS SECTION --- */
         .posts-container {
             max-width: 700px;
             margin: 50px auto;
@@ -201,7 +283,7 @@ $posts = $stmt->get_result();
             border-radius: 25px;
             padding: 25px;
             margin-bottom: 30px;
-            border: 2px solid var(--border-color);
+            border: 1px solid var(--border-color);
         }
 
         .post-header {
@@ -212,15 +294,15 @@ $posts = $stmt->get_result();
         }
 
         .post-header img {
-            width: 55px;
-            height: 55px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             object-fit: cover;
         }
 
         .post-user-info strong {
             display: block;
-            font-size: 17px;
+            font-size: 16px;
         }
 
         .post-time {
@@ -229,7 +311,7 @@ $posts = $stmt->get_result();
         }
 
         .post-caption {
-            margin: 20px 0;
+            margin: 15px 0;
             line-height: 1.5;
             font-size: 16px;
         }
@@ -242,15 +324,12 @@ $posts = $stmt->get_result();
             transition: opacity 0.2s;
         }
 
-        .post-image:hover {
-            opacity: 0.9;
-        }
-
         .post-actions {
             display: flex;
             gap: 25px;
             margin-top: 20px;
-            padding-top: 10px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .action-btn {
@@ -258,31 +337,37 @@ $posts = $stmt->get_result();
             border: none;
             color: white;
             cursor: pointer;
-            font-size: 24px;
-            padding: 0;
+            font-size: 20px;
             display: flex;
             align-items: center;
             gap: 8px;
+            transition: transform 0.1s ease;
         }
 
-        .action-btn:hover {
-            transform: scale(1.05);
+        .heart-icon {
+            font-size: 22px;
+            transition: all 0.2s ease;
         }
 
-        .action-btn.active {
-            color: #ff4d4d;
+        .action-btn.active .heart-icon {
+            color: var(--insta-red);
+            animation: heartPop 0.3s linear;
         }
 
-        .action-btn .count {
-            font-size: 16px;
-            color: var(--text-gray);
+        @keyframes heartPop {
+            50% {
+                transform: scale(1.3);
+            }
+
+            100% {
+                transform: scale(1);
+            }
         }
 
-        /* --- MODAL --- */
         .modal {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             display: none;
             align-items: center;
             justify-content: center;
@@ -294,11 +379,11 @@ $posts = $stmt->get_result();
         }
 
         .modal-box {
-            width: 90%;
-            max-width: 1100px;
-            height: 80vh;
+            width: 95%;
+            max-width: 1200px;
+            height: 85vh;
             background: var(--card-bg);
-            border-radius: 25px;
+            border-radius: 20px;
             display: flex;
             overflow: hidden;
             border: 1px solid var(--border-color);
@@ -320,7 +405,6 @@ $posts = $stmt->get_result();
 
         .modal-right {
             flex: 1;
-            width: 400px;
             padding: 20px;
             display: flex;
             flex-direction: column;
@@ -331,19 +415,19 @@ $posts = $stmt->get_result();
         .comments-list {
             flex: 1;
             overflow-y: auto;
-            margin-bottom: 15px;
         }
 
         .comment-input-area {
+            margin-top: 10px;
             display: flex;
+            flex-direction: column;
             gap: 10px;
         }
 
         .comment-input-area input {
-            flex: 1;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border-color);
-            padding: 10px 15px;
+            padding: 12px;
             border-radius: 10px;
             color: white;
         }
@@ -360,7 +444,6 @@ $posts = $stmt->get_result();
     </div>
 
     <div class="content">
-
         <div class="profile-card">
             <div class="cover"></div>
             <div class="profile-header-info">
@@ -369,9 +452,11 @@ $posts = $stmt->get_result();
                     <h2><?= htmlspecialchars($user['username']) ?></h2>
                     <p><?= htmlspecialchars($user['email']) ?></p>
                 </div>
+            </div>
+            <div class="profile-actions">
+                <p class="bio-text"><?= htmlspecialchars($user['bio'] ?? 'Write something about yourself...') ?></p>
                 <button class="edit-profile-btn" onclick="location.href='edit_profile.php'">Edit Profile</button>
             </div>
-            <div class="bio-display"><?= htmlspecialchars($user['bio'] ?? 'Bio') ?></div>
         </div>
 
         <div class="posts-container">
@@ -396,11 +481,13 @@ $posts = $stmt->get_result();
 
                         <div class="post-actions">
                             <button class="action-btn like-btn <?= $p['liked'] ? 'active' : '' ?>">
-                                <span class="heart-icon"><?= $p['liked'] ? '❤️' : '♡' ?></span>
+                                <span class="heart-icon">
+                                    <i class="<?= $p['liked'] ? 'fa-solid fa-heart' : 'fa-regular fa-heart' ?>"></i>
+                                </span>
                                 <span class="count"><?= $p['like_count'] ?></span>
                             </button>
                             <button class="action-btn comment-btn">
-                                <span>🗨️</span>
+                                <span><i class="fa-regular fa-comment"></i></span>
                                 <span class="count"><?= $p['comment_count'] ?></span>
                             </button>
                         </div>
@@ -408,6 +495,22 @@ $posts = $stmt->get_result();
                 <?php endwhile; ?>
             <?php else: ?>
                 <p style="text-align:center; color:var(--text-gray);">No posts yet.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="sidebar-right">
+        <div class="section-title">Followers</div>
+        <div class="follower-list">
+            <?php if ($followers_res->num_rows > 0): ?>
+                <?php while ($f = $followers_res->fetch_assoc()): ?>
+                    <div class="follower-item" onclick="location.href='view_profile.php?id=<?= $f['id'] ?>'">
+                        <img src="../uploads/<?= htmlspecialchars($f['picture'] ?? 'default.png') ?>" alt="follower">
+                        <span><?= htmlspecialchars($f['username']) ?></span>
+                    </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <p style="font-size: 14px; color: var(--text-gray);">No followers yet.</p>
             <?php endif; ?>
         </div>
     </div>
@@ -420,9 +523,11 @@ $posts = $stmt->get_result();
             <div class="modal-right">
                 <div class="comments-list" id="modalComments"></div>
                 <form class="comment-input-area" id="commentForm">
-                    <input type="text" id="commentInput" placeholder="Write a comment..." required>
-                    <button type="submit"
-                        style="background:var(--accent-blue); border:none; padding:10px 15px; border-radius:10px; cursor:pointer; color:white;">Post</button>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="commentInput" placeholder="Write a comment..." required style="flex:1;">
+                        <button type="submit"
+                            style="background:var(--accent-blue); border:none; padding:10px 15px; border-radius:10px; cursor:pointer; color:black; font-weight:bold;">Post</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -430,20 +535,22 @@ $posts = $stmt->get_result();
 
     <script>
         let currentPost = null;
+        let replyToId = 0;
+        const currentUserId = <?= $userId ?>;
         const modal = document.getElementById('modal');
         const modalImg = document.getElementById('modalImg');
 
-        // FIXED: Like Functionality
+        // Like Logic
         document.querySelectorAll(".like-btn").forEach(btn => {
             btn.onclick = function (e) {
                 e.preventDefault();
                 const card = this.closest(".post-card");
                 const postId = card.dataset.id;
-                const heartIcon = this.querySelector(".heart-icon");
+                const heartIconWrapper = this.querySelector(".heart-icon i");
                 const countSpan = this.querySelector(".count");
                 const button = this;
 
-                fetch("../user_modules/like_post.php", {
+                fetch("like_post.php", {
                     method: "POST",
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
                     body: "post_id=" + postId
@@ -453,67 +560,133 @@ $posts = $stmt->get_result();
                         if (data.success) {
                             countSpan.innerText = data.like_count;
                             button.classList.toggle("active");
-                            heartIcon.innerText = button.classList.contains("active") ? "❤️" : "♡";
+                            heartIconWrapper.className = button.classList.contains("active") ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
                         }
-                    })
-                    .catch(err => console.error("Error:", err));
+                    });
             };
         });
 
-        // Open Modal Handler
+        // Open Modal Fix
         document.querySelectorAll(".post-image, .comment-btn").forEach(el => {
             el.onclick = () => {
                 const card = el.closest(".post-card");
                 currentPost = card.dataset.id;
                 const postImg = card.querySelector(".post-image");
 
+                // If there is no image in the post, we can hide modal-left or show a placeholder
                 modalImg.src = postImg ? postImg.src : "";
+
                 modal.classList.add("show");
                 loadComments(currentPost);
             };
         });
 
         // Close Modal
-        window.onclick = e => {
-            if (e.target === modal) {
-                modal.classList.remove("show");
-                currentPost = null;
-            }
-        };
+        window.onclick = e => { if (e.target === modal) modal.classList.remove("show"); };
 
         function loadComments(postId) {
-            const commentsContainer = document.getElementById('modalComments');
-            commentsContainer.innerHTML = '<p style="color:gray; padding:10px;">Loading comments...</p>';
+            const container = document.getElementById('modalComments');
+            container.innerHTML = '<p style="color:gray; padding:10px;">Loading...</p>';
 
-            fetch("../user_modules/get_comments.php?post_id=" + postId)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.comments && data.comments.length > 0) {
-                        commentsContainer.innerHTML = data.comments.map(c => `
-                            <div style="margin-bottom:15px; font-size:14px;">
-                                <strong style="color:var(--accent-blue)">${c.username}</strong>
-                                <span style="display:block; margin-top:3px;">${c.content}</span>
-                            </div>
-                        `).join('');
-                    } else {
-                        commentsContainer.innerHTML = '<p style="color:gray; padding:10px;">No comments yet.</p>';
-                    }
+            fetch("get_comments.php?post_id=" + postId)
+                .then(r => r.text())
+                .then(html => {
+                    container.innerHTML = html;
+                })
+                .catch(err => {
+                    container.innerHTML = '<p style="color:red; padding:10px;">Error loading comments.</p>';
                 });
         }
 
+        // Add Comment Logic
         document.getElementById('commentForm').onsubmit = e => {
             e.preventDefault();
             const input = document.getElementById('commentInput');
+            if (!input.value.trim() || !currentPost) return;
 
-            fetch("../user_modules/add_comment.php", {
+            fetch("add_comment.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: `post_id=${currentPost}&comment_text=${encodeURIComponent(input.value)}`
-            }).then(() => {
-                input.value = "";
-                loadComments(currentPost);
-            });
+                body: `post_id=${currentPost}&comment_text=${encodeURIComponent(input.value)}&parent_id=${replyToId}`
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        input.value = "";
+                        replyToId = 0;
+                        input.placeholder = "Write a comment...";
+                        loadComments(currentPost);
+
+                        // Update local comment count on the card
+                        const card = document.querySelector(`.post-card[data-id="${currentPost}"]`);
+                        if (card) {
+                            const countSpan = card.querySelector('.comment-btn .count');
+                            countSpan.innerText = parseInt(countSpan.innerText) + 1;
+                        }
+                    }
+                })
+                .catch(err => console.error("Post Error:", err));
         };
+
+        function setReply(id, username) {
+            replyToId = id;
+            const input = document.getElementById('commentInput');
+            input.placeholder = "Replying to " + username + "...";
+            input.focus();
+        }
+
+        function editComment(id, currentText) {
+            const item = document.getElementById('comment-text-' + id);
+            if (!item) return;
+
+            item.innerHTML = `
+                <div style="margin-top:5px; width: 100%;">
+                    <input type="text" id="edit-input-${id}" value="${currentText}" 
+                           style="width:100%; padding:8px; border-radius:8px; background:rgba(255,255,255,0.1); border:1px solid #4db6ff; color:white; outline:none; font-size:13px;">
+                    <div style="display:flex; gap:10px; margin-top:8px;">
+                        <button onclick="saveEdit(${id})" style="font-size:11px; cursor:pointer; background:#4db6ff; border:none; border-radius:5px; padding:4px 12px; font-weight:bold; color:black;">Save</button>
+                        <button onclick="loadComments(${currentPost})" style="font-size:11px; cursor:pointer; background:rgba(255,255,255,0.1); border:none; border-radius:5px; padding:4px 12px; color:white;">Cancel</button>
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                const input = document.getElementById(`edit-input-${id}`);
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
+            }, 10);
+        }
+
+        function saveEdit(id) {
+            const inputField = document.getElementById(`edit-input-${id}`);
+            const newText = inputField.value;
+
+            if (!newText.trim()) return;
+
+            fetch("edit_comment.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `comment_id=${id}&content=${encodeURIComponent(newText)}`
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        loadComments(currentPost);
+                    } else {
+                        alert(data.message || "Error updating comment");
+                    }
+                })
+                .catch(err => console.error("Edit Error:", err));
+        }
+
+        function deleteComment(id) {
+            if (!confirm("Are you sure?")) return;
+            fetch("delete_comment.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: "comment_id=" + id
+            }).then(() => loadComments(currentPost));
+        }
     </script>
 </body>
 
