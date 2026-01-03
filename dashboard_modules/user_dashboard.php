@@ -125,6 +125,78 @@ $user = mysqli_fetch_assoc($result);
       border-radius: 50px;
       cursor: pointer;
       white-space: nowrap;
+      transition: 0.3s;
+    }
+
+    .search-btn:hover {
+      background: rgba(77, 182, 255, 0.2);
+      border-color: var(--accent-blue);
+    }
+
+    /* --- SEARCH RESULTS DROPDOWN --- */
+    .search-wrapper {
+      position: relative;
+      flex: 1;
+    }
+
+    .search-results {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-top: none;
+      border-radius: 0 0 15px 15px;
+      max-height: 400px;
+      overflow-y: auto;
+      display: none;
+      width: 700px;
+      z-index: 100;
+    }
+
+    .search-results.active {
+      display: block;
+    }
+
+    .search-result-item {
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-white);
+      cursor: pointer;
+      transition: 0.2s;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .search-result-item:last-child {
+      border-bottom: none;
+    }
+
+    .search-result-item:hover {
+      background: rgba(77, 182, 255, 0.1);
+      border-color: var(--accent-blue);
+    }
+
+    .search-result-pic {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .search-result-username {
+      flex: 1;
+      font-weight: 600;
+    }
+
+    .search-no-results {
+      padding: 20px;
+      text-align: center;
+      color: var(--text-gray);
+      font-size: 14px;
     }
 
     /* --- TOP FEED CREATE POST TRIGGER --- */
@@ -546,8 +618,11 @@ $user = mysqli_fetch_assoc($result);
 
   <div class="content">
     <div class="search-container">
-      <input type="text" placeholder="Search username..." id="searchBox">
-      <button class="search-btn">Search</button>
+      <div class="search-wrapper" style="flex: 1;">
+        <input type="text" placeholder="Search username..." id="searchBox">
+        <div class="search-results" id="searchResults"></div>
+      </div>
+      <button class="search-btn" onclick="goToSearchResults()">Search</button>
     </div>
 
     <div class="feed-create-post create-post-btn">
@@ -615,7 +690,7 @@ $user = mysqli_fetch_assoc($result);
               </button>
             </div>
           </div>
-        <?php endwhile;
+      <?php endwhile;
       } else {
         echo '<p style="text-align:center; color:var(--text-gray);">No posts yet.</p>';
       }
@@ -721,10 +796,12 @@ $user = mysqli_fetch_assoc($result);
 
     function reactToComment(commentId, btn) {
       fetch("../user_modules/like_comment.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `comment_id=${commentId}`
-      })
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: `comment_id=${commentId}`
+        })
         .then(r => r.json())
         .then(data => {
           if (data.success) {
@@ -751,10 +828,12 @@ $user = mysqli_fetch_assoc($result);
     function deleteComment(commentId) {
       if (!confirm("Are you sure? This will delete all replies under this comment too.")) return;
       fetch("../user_modules/delete_comment.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `comment_id=${commentId}`
-      })
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: `comment_id=${commentId}`
+        })
         .then(r => r.json())
         .then(data => {
           if (data.success) loadComments(currentPostId);
@@ -766,10 +845,12 @@ $user = mysqli_fetch_assoc($result);
       const newContent = prompt("Edit your comment:", oldContent);
       if (!newContent || newContent.trim() === "" || newContent === oldContent) return;
       fetch("../user_modules/edit_comment.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `comment_id=${commentId}&comment_text=${encodeURIComponent(newContent)}`
-      })
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: `comment_id=${commentId}&comment_text=${encodeURIComponent(newContent)}`
+        })
         .then(r => r.json())
         .then(data => {
           if (data.success) loadComments(currentPostId);
@@ -788,7 +869,9 @@ $user = mysqli_fetch_assoc($result);
 
       fetch("../user_modules/add_comment.php", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
         body: bodyData
       }).then(r => r.json()).then(data => {
         if (data.success) {
@@ -801,7 +884,7 @@ $user = mysqli_fetch_assoc($result);
     };
 
     document.querySelectorAll(".three-dots-btn").forEach(btn => {
-      btn.onclick = function (e) {
+      btn.onclick = function(e) {
         e.stopPropagation();
         const menu = this.nextElementSibling;
         document.querySelectorAll(".options-menu").forEach(m => {
@@ -812,7 +895,7 @@ $user = mysqli_fetch_assoc($result);
     });
 
     document.querySelectorAll(".like-btn").forEach(btn => {
-      btn.onclick = function (e) {
+      btn.onclick = function(e) {
         e.stopPropagation();
         const card = this.closest(".post-card");
         const postId = card.dataset.id;
@@ -821,7 +904,9 @@ $user = mysqli_fetch_assoc($result);
 
         fetch("../user_modules/like_post.php", {
           method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
           body: "post_id=" + postId
         }).then(r => r.json()).then(data => {
           if (data.success) {
@@ -849,7 +934,9 @@ $user = mysqli_fetch_assoc($result);
       if (!reason || reason.trim() === "") return;
       fetch("../user_modules/submit_report.php", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
         body: `post_id=${postId}&reason=${encodeURIComponent(reason)}`
       }).then(r => r.json()).then(data => {
         if (data.success) alert("Report submitted.");
@@ -859,7 +946,9 @@ $user = mysqli_fetch_assoc($result);
     function toggleFollow(btn, targetUserId) {
       fetch("../user_modules/follow_user.php", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
         body: "following_id=" + targetUserId
       }).then(r => r.json()).then(data => {
         if (data.success) {
@@ -868,6 +957,73 @@ $user = mysqli_fetch_assoc($result);
         }
       });
     }
+
+    /* --- SEARCH FUNCTIONALITY --- */
+    const searchBox = document.getElementById('searchBox');
+    const searchResults = document.getElementById('searchResults');
+
+    // Real-time search as user types
+    searchBox.addEventListener('input', function() {
+      const query = this.value.trim();
+
+      if (query.length === 0) {
+        searchResults.classList.remove('active');
+        return;
+      }
+
+      fetch('search_users.php?q=' + encodeURIComponent(query))
+        .then(r => r.json())
+        .then(data => {
+          if (data.users && data.users.length > 0) {
+            searchResults.innerHTML = data.users.map(user => `
+              <a href="view_profile.php?user_id=${user.id}" class="search-result-item">
+                <img src="../uploads/${user.picture}" alt="${user.username}" class="search-result-pic">
+                <span class="search-result-username">${user.username}</span>
+              </a>
+            `).join('');
+            searchResults.classList.add('active');
+          } else {
+            searchResults.innerHTML = '<div class="search-no-results">No users found</div>';
+            searchResults.classList.add('active');
+          }
+        })
+        .catch(err => {
+          console.error('Search error:', err);
+          searchResults.innerHTML = '<div class="search-no-results">Error searching users</div>';
+          searchResults.classList.add('active');
+        });
+    });
+
+    // Close search results when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.search-wrapper') && !e.target.closest('.search-btn')) {
+        searchResults.classList.remove('active');
+      }
+    });
+
+    // Also allow search with the button click
+    function searchUsers() {
+      const query = searchBox.value.trim();
+      if (query.length > 0) {
+        searchBox.dispatchEvent(new Event('input'));
+      }
+    }
+
+    // Navigate to search results page
+    function goToSearchResults() {
+      const query = searchBox.value.trim();
+      if (query.length > 0) {
+        window.location.href = 'search_results.php?q=' + encodeURIComponent(query);
+      }
+    }
+
+    // Allow pressing Enter in search box
+    searchBox.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        goToSearchResults();
+      }
+    });
   </script>
 </body>
 
